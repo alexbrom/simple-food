@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ПРО100 БЛЮДО</title>
+    <!-- Подключение шрифта и иконок -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <!-- Подключение SheetJS для экспорта в Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Подключение sql.js для SQLite в браузере -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+</head>
+<body>
+    <!-- Основной контейнер -->
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-utensils"></i> ПРО100 БЛЮДО</h1>
+            <p>Учет блюд и продуктов</p>
+            <button id="open-faq" class="btn-secondary" style="position:absolute; right:32px; top:32px; z-index:10;"><i class="fas fa-question-circle"></i> FAQ</button>
+        </header>
+        <!-- Навигация по разделам -->
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="dishes">Блюда</button>
+            <button class="tab-btn" data-tab="products">Продукты</button>
+            <button class="tab-btn" data-tab="categories">Категории</button>
+        </nav>
+        <!-- Содержимое вкладок -->
+        <main>
+            <!-- Блюда -->
+            <section class="tab-content active" id="dishes">
+                <div class="controls">
+                    <button id="add-dish" class="btn-primary"><i class="fas fa-plus"></i> Добавить блюдо</button>
+                    <button id="export-dishes-xlsx" class="btn-secondary" title="Скачать блюда в Excel"><i class="fas fa-file-excel"></i> Excel</button>
+                    <input type="text" id="search-dish" placeholder="Поиск блюд...">
+                    <select id="filter-category"><option value="">Все категории</option></select>
+                </div>
+                <div id="dishes-list" class="cards-grid"></div>
+            </section>
+            <!-- Продукты -->
+            <section class="tab-content" id="products">
+                <div class="controls">
+                    <button id="add-product" class="btn-primary"><i class="fas fa-plus"></i> Добавить продукт</button>
+                    <button id="export-products-xlsx" class="btn-secondary" title="Скачать продукты в Excel"><i class="fas fa-file-excel"></i> Excel</button>
+                    <input type="text" id="search-product" placeholder="Поиск продуктов...">
+                </div>
+                <div id="products-list" class="cards-grid"></div>
+            </section>
+            <!-- Категории -->
+            <section class="tab-content" id="categories">
+                <div class="controls">
+                    <button id="add-category" class="btn-primary"><i class="fas fa-plus"></i> Добавить категорию</button>
+                </div>
+                <div id="categories-list" class="cards-grid"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Модальные окна -->
+    <!-- Модальное окно для блюда -->
+    <div class="modal" id="dish-modal">
+        <div class="modal-content">
+            <span class="close" data-close="dish-modal">&times;</span>
+            <h2 id="dish-modal-title">Новое блюдо</h2>
+            <form id="dish-form">
+                <input type="hidden" id="dish-id">
+                <label>Название <input type="text" id="dish-name" required></label>
+                <label>Категория <select id="dish-category" required></select></label>
+                <label>Описание <textarea id="dish-desc" rows="2"></textarea></label>
+                <label>Изображение <input type="file" id="dish-image" accept="image/*"></label>
+                <div id="image-preview"></div>
+                <div id="ingredients-list"></div>
+                <button type="button" id="add-ingredient" class="btn-secondary">+ Ингредиент</button>
+                <button type="submit" class="btn-primary">Сохранить</button>
+            </form>
+        </div>
+    </div>
+    <!-- Модальное окно для продукта -->
+    <div class="modal" id="product-modal">
+        <div class="modal-content">
+            <span class="close" data-close="product-modal">&times;</span>
+            <h2 id="product-modal-title">Новый продукт</h2>
+            <form id="product-form">
+                <input type="hidden" id="product-id">
+                <label>Название <input type="text" id="product-name" required></label>
+                <label>Ед. изм. <select id="product-unit" required>
+                    <option value="g">г</option>
+                    <option value="kg">кг</option>
+                    <option value="ml">мл</option>
+                    <option value="l">л</option>
+                    <option value="pcs">шт</option>
+                </select></label>
+                <label>Количество <input type="number" id="product-amount" min="0" step="0.01" required></label>
+                <button type="submit" class="btn-primary">Сохранить</button>
+            </form>
+        </div>
+    </div>
+    <!-- Модальное окно для категории -->
+    <div class="modal" id="category-modal">
+        <div class="modal-content">
+            <span class="close" data-close="category-modal">&times;</span>
+            <h2 id="category-modal-title">Новая категория</h2>
+            <form id="category-form">
+                <input type="hidden" id="category-id">
+                <label>Название <input type="text" id="category-name" required></label>
+                <button type="submit" class="btn-primary">Сохранить</button>
+            </form>
+        </div>
+    </div>
+    <!-- Модальное окно подтверждения удаления -->
+    <div class="modal" id="confirm-modal">
+        <div class="modal-content small">
+            <h2>Подтвердите действие</h2>
+            <p id="confirm-message">Вы уверены, что хотите удалить?</p>
+            <div class="modal-actions">
+                <button id="confirm-no" class="btn-secondary">Отмена</button>
+                <button id="confirm-yes" class="btn-danger">Удалить</button>
+            </div>
+        </div>
+    </div>
+    <div id="notification"></div>
+    <!-- Модальное окно FAQ -->
+    <div class="modal" id="faq-modal">
+        <div class="modal-content small">
+            <span class="close" data-close="faq-modal">&times;</span>
+            <h2><i class="fas fa-question-circle"></i> Как пользоваться сайтом?</h2>
+            <ul style="padding-left:18px; color:#444; font-size:1.05em;">
+                <li>Добавляйте блюда, продукты и категории через соответствующие кнопки.</li>
+                <li>Для каждого блюда можно указать картинку, описание и ингредиенты.</li>
+                <li>Используйте поиск и фильтрацию для быстрого доступа к нужной информации.</li>
+                <li>Редактируйте и удаляйте записи с помощью иконок на карточках.</li>
+                <li>Экспортируйте данные в Excel для резервного копирования или переноса.</li>
+            </ul>
+        </div>
+    </div>
+    <!-- Подключение JS -->
+    <script src="script.js"></script>
+</body>
+</html>
